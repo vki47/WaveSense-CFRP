@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wavesense-cfrp"
+version = "0.1.0"
+description = "Reproducible guided-wave data audit and inspection workbench"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "scipy>=1.12", "pandas>=2.2", "h5py>=3.10", "scikit-learn>=1.5", "plotly>=5.20", "streamlit>=1.49", "requests>=2.31"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+wavesense = "wavesense.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
