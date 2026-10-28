@@ -28,6 +28,7 @@ def main() -> None:
     prepare = commands.add_parser('train', help='build manifest, train baseline and run fixed holdout experiments')
     prepare.add_argument('--data-dir', type=Path, default=Path('data/raw'))
     prepare.add_argument('--output-dir', type=Path, default=Path('outputs/model'))
+    commands.add_parser('prepare-demo',help='freeze the presentation model, fetch 40 unused test recordings and evaluate without changing the original baseline')
 
     args = parser.parse_args()
     if args.command == "sample":
@@ -49,6 +50,12 @@ def main() -> None:
         result = train(manifest, args.output_dir)
         print(f"Model: {result['version']}; manifest errors: {len(manifest['errors'])}")
         print(result['evaluations'][0])
+    elif args.command == 'prepare-demo':
+        from wavesense.temperature import develop, evaluate_test
+        from wavesense.demo_data import fetch_test
+        develop()
+        fetch_test()
+        evaluate_test()
 
 
 if __name__ == "__main__":

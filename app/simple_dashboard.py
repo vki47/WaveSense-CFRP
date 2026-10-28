@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 from wavesense.ingest import load_recording
 from wavesense.model import predict
+from wavesense.temperature import predict_recording
 from wavesense.report import export_html
 from wavesense.visualization import SOURCE, contributions, plate, signals
 
@@ -32,11 +33,17 @@ def main():
     st.write('Can recorded sound help us spot changes in a carbon-fibre plate?')
     st.caption('Choose a recording → analyse it → explore the plate. No equipment needed.')
     try:
-        artifact=json.loads(Path('outputs/model/model.json').read_text(encoding='utf-8'))
+        model_path=Path('outputs/presentation/model.json')
+        if not model_path.exists():
+            model_path=Path('outputs/model/model.json')
+        artifact=json.loads(model_path.read_text(encoding='utf-8'))
     except (OSError,ValueError):
         st.info('The demo needs to be prepared once. See README.md for setup.')
         return
     records=artifact['partitions']
+    upgraded=artifact.get('kind')=='temperature-logistic-v1'
+    if 'analysis' in st.session_state and st.session_state.analysis[1]['model_version']!=artifact['version']:
+        st.session_state.pop('analysis')
     st.subheader('1. Choose a recording')
     source=st.radio('Use an example or your own file',['Try an example','Upload a file'],horizontal=True)
     with st.form('choose_recording'):
@@ -69,7 +76,7 @@ def main():
                     path.write_bytes(data)
             with st.spinner('Reading the sound recordings…'):
                 recording=recording_at(path)
-                result=predict(recording,artifact)
+                result=predict_recording(recording,artifact) if upgraded else predict(recording,artifact)
             st.session_state.analysis=(recording,result)
         except (ValueError,OSError,KeyError) as exc:
             st.error(f'We could not analyse this recording. {exc}')
@@ -90,8 +97,17 @@ def main():
     if meta['condition']!='unknown':
         agrees=(meta['condition']=='healthy')==(result['result']=='Healthy-like')
         st.write('**This prediction matches the experiment label.**' if agrees else '**This prediction is wrong for this example.**')
-    tn,fp=artifact['evaluations'][0]['confusion'][0]
-    st.warning(f'Learning demo: the model wrongly flagged {fp} of {tn+fp} healthy recordings in its hotter test set. A prediction is not proof of damage.')
+    if upgraded:
+        measured=artifact['test_results']['new_model']
+        tn,fp=measured['confusion'][0]
+        fn,tp=measured['confusion'][1]
+        st.info(f'New laboratory test: {tn+tp}/{measured["n"]} correct · {fp}/{tn+fp} healthy false alarms · {tp}/{tp+fn} reference cases detected.')
+        st.caption('Test recordings were not used to fit or choose this model. They still come from the same specimen and recording cycles. This does not establish detection of real cracks or performance on another structure.')
+    else:
+        tn,fp=artifact['evaluations'][0]['confusion'][0]
+        st.warning(f'Learning demo: the model wrongly flagged {fp} of {tn+fp} healthy recordings in its hotter test set. A prediction is not proof of damage.')
+    if result['split']=='train':
+        st.caption('This selected example was used for training. Choose a test example for an independent acquisition demonstration.')
     st.subheader('3. Explore the plate')
     st.caption('The dots are sensors. The highlighted line joins the two sensors whose recording you are viewing.')
     pairs=[tuple(map(int,p)) for p in recording.channels]
@@ -124,6 +140,10 @@ def main():
         st.plotly_chart(evidence[0],width='stretch')
         st.caption('Comparisons are chosen automatically from training examples by temperature proximity. Changing the displayed connection does not change the prediction.')
     with st.expander('Details for your project report'):
+        st.write('**Machine learning: supervised binary classification using logistic regression.** Four signal-strength features from each of 66 connections give 264 inputs. The model learns weights from labelled recordings; the known label is not supplied during prediction.')
+        if upgraded:
+            st.caption(f'Trained on {len(artifact["development_records"])} recordings across the available temperature range. C={artifact["model"]["C"]}; temperature correction degree={artifact["model"]["degree"]} (0 means none). Settings were selected by grouped cross-validation before the new test was downloaded.')
+            st.write(f'New-test balanced accuracy: {measured["balanced_accuracy"]:.1%}. This limited laboratory result is not a real-world accuracy guarantee.')
         st.write(f'Model score: **{result["score"]:.3f}**. Below 0.5 means healthy-like. This is not a probability of damage.')
         st.write(f'{result["available_paths"]} connections · {result["sensors_used"]} sensors · {meta["temperature_C"] if meta["temperature_C"] is not None else "Unknown"} °C')
         st.caption(f'500 × 500 × 2 mm plate. {SOURCE}. Sensor dots are position markers, not physical sizes or depths. Connection lines are not simulated waves.')

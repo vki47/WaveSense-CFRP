@@ -6,7 +6,15 @@ WaveSense-CFRP is a local workbench for exploring public ultrasonic guided-wave 
 
 ## Run the prepared application
 
-The default app is a short college-demo workflow: choose an example (or upload a supported file), press **Analyse recording**, and explore the plate. Graphs and technical details are optional expanders. Use **Top** for a flat map and **Reset view** to restore the 3D camera. The prediction is still the same experimental baseline; simplifying the interface does not improve its accuracy.
+The default app is a short college-demo workflow: choose an example (or upload a supported file), press **Analyse recording**, and explore the plate. Graphs and technical details are optional expanders. Use **Top** for a flat map and **Reset view** to restore the 3D camera.
+
+**Presentation update:** the default app now prefers the prepared model in `outputs/presentation/model.json`, falling back to the original model if unavailable. This is supervised logistic regression trained across the development temperature range. It correctly classified 40/40 additional acquisitions (8 healthy and 32 reference-object cases). These come from the same specimen and cycles; this does not validate real internal damage detection. The original failed experiment above remains part of the project history.
+
+Double-click `Launch_WaveSense.cmd` to start. Read [the presentation and viva guide](docs/PRESENTATION_GUIDE.md) and [verified results and demo examples](docs/DEMO_RESULTS.md). Two standalone HTML reports are prepared under `outputs/presentation/` for an offline backup.
+
+The improved seven-slide presentation is saved in [docs/presentation](docs/presentation). Download or clone the repository and open `docs/presentation/index.html` in a browser. Use arrow keys to advance and F11 for full screen. These slides are image exports of the editable presentation; [speaker notes](docs/presentation/SPEAKER_NOTES.md) are included separately.
+
+After preparing the original 60-file baseline below, reproduce the second experiment with `python -m wavesense.cli prepare-demo`, then `python scripts/prepare_demo_reports.py`. This downloads 40 additional files, freezes model selection before reading them, and preserves the first saved evaluation. See [the frozen protocol](docs/DEMO_PROTOCOL.md). Raw data and model outputs remain local and are not stored in Git.
 
 The advanced dashboard, model comparisons and outage controls are preserved separately:
 
